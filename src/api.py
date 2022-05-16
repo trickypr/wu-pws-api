@@ -16,7 +16,13 @@ class Request:
 
     def temperature_celsius(self, temperature: float):
         self.params['tempf'] = celsius_to_farenheight(temperature)
+        return self
 
+    def humidity(self, humidity: float):
+        if humidity > 100 or humidity < 0:
+            raise ValueError(f"The humidity must have a value between 0 and 100%, got {humidity}%")
+
+        self.params['humidity'] = humidity
         return self
 
     def send(self) -> requests.Response:
