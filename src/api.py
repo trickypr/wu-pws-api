@@ -1,6 +1,6 @@
 import requests
 
-from api.src.utils import celsius_to_farenheight
+from api.src.utils import celsius_to_farenheight, hpa_to_inhg, mm_to_inches
 
 
 class Request:
@@ -25,6 +25,18 @@ class Request:
         self.params['humidity'] = humidity
         return self
 
+    def pressure_hpa(self, pressure: float):
+        self.param['baromin'] = hpa_to_inhg(pressure)
+        return self
+
+    def uv_index(self, uv_index: float):
+        self.param['UV'] = uv_index
+        return self
+
+    def hourly_rain_mm(self, rain: float):
+        self.params['rainin'] = mm_to_inches(rain)
+        return self
+
     def send(self) -> requests.Response:
         stringified_params = f"?ID={self.api_object.station_id}&password={self.api_object.password}&dateutc=now"
 
@@ -46,6 +58,7 @@ class API:
     password: str
 
     api_url: str = "https://weatherstation.wunderground.com/weatherstation/updateweatherstation.php"
+    api_additional_params = {}
 
     def __init__(self, station_id: str, password: str):
         self.station_id = station_id
@@ -58,6 +71,27 @@ class API:
         """
         self.api_url = url
 
+    def use_realtime(self, time_between_updates: float):
+        """Sends realtime (also known as RapidFire) data to the server
+
+        Args:
+            time_between_updates (float): The time (in seconds) between upates.
+
+        Raises:
+            ValueError: If the time is less than 2.5
+        """
+
+        if time_between_updates < 2.5:
+            raise ValueError(f"The time between updates must be more than 2.5 seconds. Got {time_between_updates} seconds")
+
+        self.api_url = "https://rtupdate.wunderground.com/weatherstation/updateweatherstation.php"
+
+        self.api_additional_params["realtime"] = 1
+        self.api_additional_params["rtfreq"] = time_between_updates
+
+        return self
+
     def start_request(self) -> Request:
-        return Request(self)
-    
+        req = Request(self)
+        req.params = self.api_additional_params
+        return req
