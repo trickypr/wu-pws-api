@@ -7,10 +7,10 @@ class RainEvent:
         self.time = time
 
 class RainTracker:
-    rain_events: List[RainEvent]
+    rain_events: List[RainEvent] = []
 
     def register_rain(self, rain: RainEvent):
-        rain_event.append(rain)
+        self.rain_events.append(rain)
         return self
 
     def get_past_hour(self) -> float:

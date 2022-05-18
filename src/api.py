@@ -26,11 +26,11 @@ class Request:
         return self
 
     def pressure_hpa(self, pressure: float):
-        self.param['baromin'] = hpa_to_inhg(pressure)
+        self.params['baromin'] = hpa_to_inhg(pressure)
         return self
 
     def uv_index(self, uv_index: float):
-        self.param['UV'] = uv_index
+        self.params['UV'] = uv_index
         return self
 
     def hourly_rain_mm(self, rain: float):
@@ -38,7 +38,7 @@ class Request:
         return self
 
     def send(self) -> requests.Response:
-        stringified_params = f"?ID={self.api_object.station_id}&password={self.api_object.password}&dateutc=now"
+        stringified_params = f"?ID={self.api_object.station_id}&PASSWORD={self.api_object.password}&dateutc=now"
 
         for param, value in self.params.items():
             stringified_params += f"&{param}={value}"
