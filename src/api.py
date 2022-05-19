@@ -37,7 +37,15 @@ class Request:
         self.params['rainin'] = mm_to_inches(rain)
         return self
 
+    def calculate_other_vals(self):
+        if self.params['tempf'] is not None and self.params['humidity'] is not None:
+            self.params['dewptf'] = self.params['tempf'] - ((100 - self.params['humidity']) / 5)
+        
+        pass
+
     def send(self) -> requests.Response:
+        self.calculate_other_vals()
+        
         stringified_params = f"?ID={self.api_object.station_id}&PASSWORD={self.api_object.password}&dateutc=now"
 
         for param, value in self.params.items():
