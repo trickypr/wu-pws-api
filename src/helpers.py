@@ -1,21 +1,59 @@
 from datetime import datetime
 from typing import List
 
+import os
+import json
+
+store_path = os.getcwd()
+
+class PersistentStore:
+    """Provides persistent storage for values that should be persisted over long
+    periods of time
+    """
+    
+    def __init__(self, name: str, data_var: str):
+        self.file_name = os.path.join(store_path, f"{name}.json")
+        self.data_var = data_var
+
+
+    
+    def _load(self):
+        if not os.path.exists(self.file_name):
+            return
+
+        with open(self.file_name, 'r') as store:
+            print(f'Loading {self.data_var}')
+            self.__setattr__(self.data_var, json.load(store.read()))
+
+    def _store(self):
+        # with open(self.file_name, 'w') as store:
+        #     print(f'Storing {self.data_var}')
+        #     print(self.__getattribute__(self.data_var))
+        #     store.write(json.dumps(self.__getattribute__(self.data_var), default=lambda o: o.__dict__))
+        pass
+
 class WindEvent:
     def __init__(self, speed_km: float, start_time: datetime):
         self.speed_km = speed_km
         self.start_time = start_time
+    
+    def toJSON(self):
+        return json.dumps({ 'speed_km': self.speed_km, 'start_time': self.start_time })
 
-class WindTracker:
+class WindTracker(PersistentStore):
     wind_events: List[WindEvent]
     speed_per_second: float
     """The wind speed at one pulse / second"""
+
+    def __init__(self):
+        super().__init__('wind_tracker', 'wind_events')
 
     def clean_up(self):
         max_age_minutes = 10
         max_age_seconds = max_age_minutes * 60
 
-        self.wind_events = filter(lambda event: (datetime.now() - event.start_time).seconds < max_age_seconds, self.wind_events)
+        self.wind_events = list(filter(lambda event: (datetime.now() - event.start_time).seconds < max_age_seconds, self.wind_events))
+        self._store()
 
     def add_event(self, time: datetime):
         self.clean_up()
@@ -54,11 +92,27 @@ class RainEvent:
     def __init__(self, amount_mm: float, time: datetime):
         self.amount_mm = amount_mm
         self.time = time
+    
+    def toJSON(self):
+        return json.dumps({ 'amount_mm': self.amount_mm, 'time': self.time })
 
-class RainTracker:
+class RainTracker(PersistentStore):
     rain_events: List[RainEvent] = []
 
+    def __init__(self):
+        super().__init__('rain_tracker', 'rain_events')
+
+    def _clean_up(self):
+        max_age_hours = 24
+        max_age_minutes = max_age_hours * 60
+        max_age_seconds = max_age_minutes * 60
+
+        self.rain_events = list(filter(lambda event: (datetime.now() - event.time).seconds < max_age_seconds, self.rain_events))
+        self._store()
+
     def register_rain(self, rain: RainEvent):
+        self._clean_up()
+
         self.rain_events.append(rain)
         return self
 

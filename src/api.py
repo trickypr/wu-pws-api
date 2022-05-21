@@ -1,4 +1,5 @@
 import requests
+from api.src.helpers import RainTracker
 
 from api.src.utils import celsius_to_farenheight, hpa_to_inhg, mm_to_inches
 
@@ -36,6 +37,13 @@ class Request:
     def hourly_rain_mm(self, rain: float):
         self.params['rainin'] = mm_to_inches(rain)
         return self
+
+    def daily_rain_mm(self, rain: float):
+        self.params['dailyrainin'] = mm_to_inches(rain)
+        return self
+    
+    def rain(self, rain: RainTracker):
+        return self.hourly_rain_mm(rain.get_past_hour()).daily_rain_mm(rain.get_past_day())
 
     def calculate_other_vals(self):
         if self.params['tempf'] is not None and self.params['humidity'] is not None:
