@@ -1,4 +1,5 @@
 from datetime import datetime
+import statistics
 from typing import List
 
 import os
@@ -41,9 +42,9 @@ class WindEvent:
         return json.dumps({ 'speed_km': self.speed_km, 'start_time': self.start_time })
 
 class WindTracker(PersistentStore):
-    wind_events: List[WindEvent]
-    speed_per_second: float
-    """The wind speed at one pulse / second"""
+    wind_events: List[WindEvent] = []
+    distance_per_event: float = 7 / 6 # meters
+    """The distance (in meters) traveled when there is one event"""
 
     def __init__(self):
         super().__init__('wind_tracker', 'wind_events')
@@ -58,23 +59,42 @@ class WindTracker(PersistentStore):
     def add_event(self, time: datetime):
         self.clean_up()
 
+        if len(self.wind_events) == 0: 
+            self.wind_events.append(WindEvent(0, time))
+            return
+
         last_time = self.wind_events[-1].start_time
         dif = time - last_time
-        speed = (1/dif.seconds()) * self.speed_per_second
+        dif_seconds = dif.seconds + dif.microseconds / 1000000 # Note that if the time was less than one second, the dif will be zero, so we need to calculate the microseconds
+        speed_mps = self.distance_per_event / dif_seconds # Wind speed in m/s
+        speed_kph = speed_mps / 1000 * 60 * 60
 
-        self.wind_events.append(WindEvent(speed, time))
+        if speed_kph > 1000:
+            # THis only happens when there is a double bounce, so we should 
+            # try to filter it out
+            return
 
-    def speed_instant(self):
+        print(f"Wind Speed: {speed_kph}")
+
+        self.wind_events.append(WindEvent(speed_kph, time))
+
+    def speed_instant(self) -> float:
+        if len(self.wind_events) == 0:
+            return 0
+        
         return self.wind_events[-1].speed_km
 
     def _speed_avg(self, age_seconds: int):
+        if len(self.wind_events) == 0:
+            return 0
+
         numerator = 0
         denominator = 0
 
         for event in self.wind_events:
             time_since = datetime.now() - event.start_time
 
-            if time_since > age_seconds:
+            if time_since.seconds > age_seconds:
                 continue
 
             numerator += event.speed_km

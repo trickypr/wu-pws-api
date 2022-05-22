@@ -7,3 +7,6 @@ def hpa_to_inhg(pressure: float) -> float:
 
 def mm_to_inches(mm: float) -> float:
     return round(mm / 25.4, 1)
+
+def kph_to_mph(kph: float) -> float:
+    return round(kph * 0.6213711922, 2)

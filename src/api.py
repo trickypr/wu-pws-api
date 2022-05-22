@@ -1,7 +1,7 @@
 import requests
-from api.src.helpers import RainTracker
+from api.src.helpers import RainTracker, WindTracker
 
-from api.src.utils import celsius_to_farenheight, hpa_to_inhg, mm_to_inches
+from api.src.utils import celsius_to_farenheight, hpa_to_inhg, kph_to_mph, mm_to_inches
 
 
 class Request:
@@ -42,14 +42,43 @@ class Request:
         self.params['dailyrainin'] = mm_to_inches(rain)
         return self
     
+    def wind_instant_mph(self, speed: float):
+        self.params['windspeedmph'] = speed
+        return self
+    
+    def wind_gust_mph(self, speed: float):
+        self.params['windgustmph'] = speed
+        return self
+    
+    def wind_speed_mph_2m(self, speed: float):
+        self.params['windspdmph_avg2m'] = speed
+        return self
+    
+    def wind_gust_mph_10m(self, speed: float):
+        self.params['windgustmph_10m'] = speed
+        return self
+
+    def wind_instant_kph(self, speed: float):
+        return self.wind_instant_mph(kph_to_mph(speed))
+    
+    def wind_gust_kph(self, speed: float):
+        return self.wind_gust_mph(kph_to_mph(speed))
+    
+    def wind_speed_kph_2m(self, speed: float):
+        return self.wind_speed_mph_2m(kph_to_mph(speed))
+    
+    def wind_gust_kph_10m(self, speed: float):
+        return self.wind_gust_mph_10m(kph_to_mph(speed))
+
+    def wind(self, wind: WindTracker):
+        return self.wind_instant_kph(wind.speed_instant()).wind_speed_kph_2m(wind.speed_avg_2m())
+
     def rain(self, rain: RainTracker):
         return self.hourly_rain_mm(rain.get_past_hour()).daily_rain_mm(rain.get_past_day())
 
     def calculate_other_vals(self):
         if self.params['tempf'] is not None and self.params['humidity'] is not None:
             self.params['dewptf'] = self.params['tempf'] - ((100 - self.params['humidity']) / 5)
-        
-        pass
 
     def send(self) -> requests.Response:
         self.calculate_other_vals()
