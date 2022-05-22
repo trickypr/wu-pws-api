@@ -1,66 +1,49 @@
 from datetime import datetime
 import statistics
-from typing import List
+from typing import List, Tuple
 
 import os
 import json
 
 store_path = os.getcwd()
 
-class PersistentStore:
-    """Provides persistent storage for values that should be persisted over long
-    periods of time
-    """
-    
-    def __init__(self, name: str, data_var: str):
-        self.file_name = os.path.join(store_path, f"{name}.json")
-        self.data_var = data_var
-
-
-    
-    def _load(self):
-        if not os.path.exists(self.file_name):
-            return
-
-        with open(self.file_name, 'r') as store:
-            print(f'Loading {self.data_var}')
-            self.__setattr__(self.data_var, json.load(store.read()))
-
-    def _store(self):
-        # with open(self.file_name, 'w') as store:
-        #     print(f'Storing {self.data_var}')
-        #     print(self.__getattribute__(self.data_var))
-        #     store.write(json.dumps(self.__getattribute__(self.data_var), default=lambda o: o.__dict__))
-        pass
 
 class WindEvent:
-    def __init__(self, speed_km: float, start_time: datetime):
+    def __init__(self, speed_km: float, start_time: datetime, angle: float):
         self.speed_km = speed_km
         self.start_time = start_time
+        self.angle = angle
     
     def toJSON(self):
         return json.dumps({ 'speed_km': self.speed_km, 'start_time': self.start_time })
 
-class WindTracker(PersistentStore):
+class WindTracker:
     wind_events: List[WindEvent] = []
     distance_per_event: float = 7 / 6 # meters
     """The distance (in meters) traveled when there is one event"""
 
-    def __init__(self):
-        super().__init__('wind_tracker', 'wind_events')
+    direction_resistance_table: List[Tuple[float, float]]
 
     def clean_up(self):
         max_age_minutes = 10
         max_age_seconds = max_age_minutes * 60
 
         self.wind_events = list(filter(lambda event: (datetime.now() - event.start_time).seconds < max_age_seconds, self.wind_events))
-        self._store()
 
-    def add_event(self, time: datetime):
+    def load_direction_table(self, table: List[Tuple[float, float]]):
+        self.direction_resistance_table = table
+        return self
+    
+    def get_direction(self, resistance: float) -> float:
+        distances = list(map(lambda row: abs(resistance - row[1]), self.direction_resistance_table))
+        min_index = distances.index(min(distances))
+        return self.direction_resistance_table[min_index][0]
+
+    def add_event(self, time: datetime, angle: float):
         self.clean_up()
 
         if len(self.wind_events) == 0: 
-            self.wind_events.append(WindEvent(0, time))
+            self.wind_events.append(WindEvent(0, time, angle))
             return
 
         last_time = self.wind_events[-1].start_time
@@ -76,7 +59,7 @@ class WindTracker(PersistentStore):
 
         print(f"Wind Speed: {speed_kph}")
 
-        self.wind_events.append(WindEvent(speed_kph, time))
+        self.wind_events.append(WindEvent(speed_kph, time, angle))
 
     def speed_instant(self) -> float:
         if len(self.wind_events) == 0:
@@ -84,7 +67,7 @@ class WindTracker(PersistentStore):
         
         return self.wind_events[-1].speed_km
 
-    def _speed_avg(self, age_seconds: int):
+    def _avg(self, age_seconds: int, atr: str):
         if len(self.wind_events) == 0:
             return 0
 
@@ -97,13 +80,23 @@ class WindTracker(PersistentStore):
             if time_since.seconds > age_seconds:
                 continue
 
-            numerator += event.speed_km
+            numerator += event.__getattribute__(atr)
             denominator += 1
 
         return numerator / denominator
 
-    def speed_avg_2m(self):
-        return self._speed_avg(2 * 60)
+    def speed_2m(self):
+        return self._avg(2 * 60, 'speed_km')
+
+    def direction_instant(self):
+        if len(self.wind_events) == 0:
+            return 0
+        
+        return self.wind_events[-1].angle
+    
+    def direction_2m(self):
+        return self._avg(2 * 60, 'angle')
+
 
         
 
@@ -116,11 +109,8 @@ class RainEvent:
     def toJSON(self):
         return json.dumps({ 'amount_mm': self.amount_mm, 'time': self.time })
 
-class RainTracker(PersistentStore):
+class RainTracker:
     rain_events: List[RainEvent] = []
-
-    def __init__(self):
-        super().__init__('rain_tracker', 'rain_events')
 
     def _clean_up(self):
         max_age_hours = 24
@@ -128,7 +118,6 @@ class RainTracker(PersistentStore):
         max_age_seconds = max_age_minutes * 60
 
         self.rain_events = list(filter(lambda event: (datetime.now() - event.time).seconds < max_age_seconds, self.rain_events))
-        self._store()
 
     def register_rain(self, rain: RainEvent):
         self._clean_up()

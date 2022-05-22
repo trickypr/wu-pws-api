@@ -69,9 +69,17 @@ class Request:
     
     def wind_gust_kph_10m(self, speed: float):
         return self.wind_gust_mph_10m(kph_to_mph(speed))
+    
+    def wind_direction_instant(self, angle: float):
+        self.params['winddir'] = angle
+        return self
+    
+    def wind_direction_2m(self, angle: float):
+        self.params['winddir_avg2m'] = angle
+        return self
 
     def wind(self, wind: WindTracker):
-        return self.wind_instant_kph(wind.speed_instant()).wind_speed_kph_2m(wind.speed_avg_2m())
+        return self.wind_instant_kph(wind.speed_instant()).wind_speed_kph_2m(wind.speed_2m()).wind_direction_instant(wind.direction_instant()).wind_direction_2m(wind.direction_2m())
 
     def rain(self, rain: RainTracker):
         return self.hourly_rain_mm(rain.get_past_hour()).daily_rain_mm(rain.get_past_day())
