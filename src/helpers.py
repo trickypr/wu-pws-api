@@ -13,13 +13,17 @@ class WindEvent:
         self.speed_km = speed_km
         self.start_time = start_time
         self.angle = angle
-    
+
     def toJSON(self):
-        return json.dumps({ 'speed_km': self.speed_km, 'start_time': self.start_time })
+        return json.dumps({
+            'speed_km': self.speed_km,
+            'start_time': self.start_time
+        })
+
 
 class WindTracker:
     wind_events: List[WindEvent] = []
-    distance_per_event: float = 7 / 6 # meters
+    distance_per_event: float = 7 / 6  # meters
     """The distance (in meters) traveled when there is one event"""
 
     direction_resistance_table: List[Tuple[float, float]]
@@ -28,32 +32,38 @@ class WindTracker:
         max_age_minutes = 10
         max_age_seconds = max_age_minutes * 60
 
-        self.wind_events = list(filter(lambda event: (datetime.now() - event.start_time).seconds < max_age_seconds, self.wind_events))
+        self.wind_events = list(
+            filter(
+                lambda event:
+                (datetime.now() - event.start_time).seconds < max_age_seconds,
+                self.wind_events))
 
     def load_direction_table(self, table: List[Tuple[float, float]]):
         self.direction_resistance_table = table
         return self
-    
+
     def get_direction(self, resistance: float) -> float:
-        distances = list(map(lambda row: abs(resistance - row[1]), self.direction_resistance_table))
+        distances = list(
+            map(lambda row: abs(resistance - row[1]),
+                self.direction_resistance_table))
         min_index = distances.index(min(distances))
         return self.direction_resistance_table[min_index][0]
 
     def add_event(self, time: datetime, angle: float):
         self.clean_up()
 
-        if len(self.wind_events) == 0: 
+        if len(self.wind_events) == 0:
             self.wind_events.append(WindEvent(0, time, angle))
             return
 
         last_time = self.wind_events[-1].start_time
         dif = time - last_time
-        dif_seconds = dif.seconds + dif.microseconds / 1000000 # Note that if the time was less than one second, the dif will be zero, so we need to calculate the microseconds
-        speed_mps = self.distance_per_event / dif_seconds # Wind speed in m/s
+        dif_seconds = dif.seconds + dif.microseconds / 1000000  # Note that if the time was less than one second, the dif will be zero, so we need to calculate the microseconds
+        speed_mps = self.distance_per_event / dif_seconds  # Wind speed in m/s
         speed_kph = speed_mps / 1000 * 60 * 60
 
         if speed_kph > 1000:
-            # THis only happens when there is a double bounce, so we should 
+            # THis only happens when there is a double bounce, so we should
             # try to filter it out
             return
 
@@ -64,7 +74,7 @@ class WindTracker:
     def speed_instant(self) -> float:
         if len(self.wind_events) == 0:
             return 0
-        
+
         return self.wind_events[-1].speed_km
 
     def _avg(self, age_seconds: int, atr: str):
@@ -91,23 +101,21 @@ class WindTracker:
     def direction_instant(self):
         if len(self.wind_events) == 0:
             return 0
-        
+
         return self.wind_events[-1].angle
-    
+
     def direction_2m(self):
         return self._avg(2 * 60, 'angle')
-
-
-        
 
 
 class RainEvent:
     def __init__(self, amount_mm: float, time: datetime):
         self.amount_mm = amount_mm
         self.time = time
-    
+
     def toJSON(self):
-        return json.dumps({ 'amount_mm': self.amount_mm, 'time': self.time })
+        return json.dumps({'amount_mm': self.amount_mm, 'time': self.time})
+
 
 class RainTracker:
     rain_events: List[RainEvent] = []
@@ -117,7 +125,11 @@ class RainTracker:
         max_age_minutes = max_age_hours * 60
         max_age_seconds = max_age_minutes * 60
 
-        self.rain_events = list(filter(lambda event: (datetime.now() - event.time).seconds < max_age_seconds, self.rain_events))
+        self.rain_events = list(
+            filter(
+                lambda event:
+                (datetime.now() - event.time).seconds < max_age_seconds,
+                self.rain_events))
 
     def register_rain(self, rain: RainEvent):
         self._clean_up()
@@ -144,8 +156,6 @@ class RainTracker:
         Returns the number of mm of rain in the past hour
         """
         return self._get_total(60 * 60)
-    
+
     def get_past_day(self) -> float:
         return self._get_total(60 * 60 * 24)
-
-        
